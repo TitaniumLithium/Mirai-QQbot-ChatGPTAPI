@@ -9,4 +9,4 @@ A Mirai QQbot which communicate through ChatGPT API.
 
 写得很简单 只针对群聊at (能用就行)
 
-
+请注意你需要自己部署mirai-http-api
