@@ -59,15 +59,15 @@ help_msg = ".help 帮助 .reset 重置会话 .preset 重置并使用预设会话
 
 
 @cmd.command(".help")
-async def bot_help(app: Ariadne, event: MessageEvent, sender: Group):
-    await app.send_message(MessageEvent, MessageChain([Plain(help_msg)]))
+async def bot_help(app: Ariadne, sender: Group):
+    await app.send_message(sender, MessageChain([Plain(help_msg)]))
 
 
 @cmd.command(".reset")
-async def bot_reset(app: Ariadne, event: MessageEvent, sender: Group):
+async def bot_reset(app: Ariadne, sender: Group):
     if sender.id in Group_Chats:
         Group_Chats[sender.id].reset()
-        logger.debug("conversation reset")
+        logger.debug(str(sender.id) + "conversation reset")
         await app.send_message(sender, MessageChain([Plain("conversation reset")]))
     else:
         Group_Chats[sender.id] = Chatbot(
@@ -75,11 +75,11 @@ async def bot_reset(app: Ariadne, event: MessageEvent, sender: Group):
             max_tokens=botconfig.get("openai").get("max_tokens"),
             temperature=botconfig.get("openai").get("temperature")
         )
-        logger.debug("Group.id added to dict by reset")
+        logger.debug(str(sender.id) + "Group.id added to dict by reset")
 
 
 @cmd.command(".temperature {value: str}")
-async def bot_temperature(app: Ariadne, event: MessageEvent, sender: Group, value: str):
+async def bot_temperature(app: Ariadne, sender: Group, value: str):
     try:
         value_float = float(value)
         if value_float < 0 or value_float > 1:
@@ -87,14 +87,14 @@ async def bot_temperature(app: Ariadne, event: MessageEvent, sender: Group, valu
             return
         if sender.id in Group_Chats:
             Group_Chats[sender.id].temperature = value
-            logger.debug("temperature set")
+            logger.debug(str(sender.id) + "temperature set")
             await app.send_message(sender, MessageChain([Plain("temprature set to " + value)]))
     except Exception as e:
         await app.send_message(sender, MessageChain([Plain("Please check the value 0-1" + value)]))
 
 
 @cmd.command(".preset {preset: str}")
-async def bot_preset(app: Ariadne, event: MessageEvent, sender: Group, preset: str):
+async def bot_preset(app: Ariadne, sender: Group, preset: str):
     preset_prompt: list
     preset_prompt = botconfig.get("presets").get(preset)
     logger.debug(preset_prompt)
@@ -113,7 +113,7 @@ async def bot_preset(app: Ariadne, event: MessageEvent, sender: Group, preset: s
         )
         Group_Chats[sender.id].conversation["default"] = preset_prompt
         await app.send_message(sender, MessageChain([Plain("preset applied: " + preset)]))
-        logger.debug("Group.id added to dict by preset")
+        logger.debug(str(sender.id) + "Group.id added to dict by preset")
 
 
 @app.broadcast.receiver("FriendMessage")
