@@ -81,16 +81,18 @@ async def bot_reset(app: Ariadne, sender: Group):
 @cmd.command(".temperature {value: str}")
 async def bot_temperature(app: Ariadne, sender: Group, value: str):
     try:
+        value_float: float
         value_float = float(value)
+        logger.debug(type(value_float))
         if value_float < 0 or value_float > 1:
-            await app.send_message(sender, MessageChain([Plain("Please check the value 0-1" + value)]))
+            await app.send_message(sender, MessageChain([Plain("Please check the value 0-1")]))
             return
         if sender.id in Group_Chats:
-            Group_Chats[sender.id].temperature = value
+            Group_Chats[sender.id].temperature = value_float
             logger.debug(str(sender.id) + "temperature set")
             await app.send_message(sender, MessageChain([Plain("temprature set to " + value)]))
     except Exception as e:
-        await app.send_message(sender, MessageChain([Plain("Please check the value 0-1" + value)]))
+        await app.send_message(sender, MessageChain([Plain("Please check the value 0-1")]))
 
 
 @cmd.command(".preset {preset: str}")
