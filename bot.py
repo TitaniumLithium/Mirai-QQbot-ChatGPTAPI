@@ -18,12 +18,12 @@ from revChatGPT.V3 import Chatbot
 from loguru import logger
 import json
 
-with open('config.json','r',encoding="UTF-8") as json_file:
+with open('config.json', 'r', encoding="UTF-8") as json_file:
     botconfig = json.load(json_file)
 
 logger.info(botconfig)
 
-#群聊隔离
+# 群聊隔离
 Group_Chats = {}
 
 app = Ariadne(
@@ -35,37 +35,39 @@ app = Ariadne(
     ),
 )
 
+
 @app.broadcast.receiver("GroupMessage")
 # 群聊信息
 async def group_message_listener(app: Ariadne, group: Group, source: Source, chain: MessageChain = MentionMe()):
     logger.debug(chain.display)
     if group.id not in Group_Chats:
-    #init a chat
+        # init a chat
         Group_Chats[group.id] = Chatbot(
             api_key=botconfig.get("openai").get("openai_api_key"),
             max_tokens=botconfig.get("openai").get("max_tokens"),
             temperature=botconfig.get("openai").get("temperature")
         )
-        logger.debug("Group.id added to dict")    
+        logger.debug("Group.id added to dict")
     response = Group_Chats[group.id].ask(chain.display)
-    logger.info(response)
-    
+    logger.debug(response)
+
     await app.send_message(group, MessageChain([Plain(response)]), quote=source)
 
 cmd = Commander(app.broadcast)
 
-help_msg = ".help 帮助 \n.reset 重置会话 \n.preset 重置并使用预设会话 当前可使用预设：猫娘 \n.temparature 修改情感值0-1.0 基础0.5 数值越高回复字数越多\n"
+help_msg = ".help 帮助 .reset 重置会话 .preset 重置并使用预设会话 当前可使用预设：猫娘 .temparature 修改情感值0-1.0 基础0.5 数值越高回复字数越多"
 
 
 @cmd.command(".help")
 async def bot_help(app: Ariadne, event: MessageEvent, sender: Group):
     await app.send_message(MessageEvent, MessageChain([Plain(help_msg)]))
 
+
 @cmd.command(".reset")
 async def bot_reset(app: Ariadne, event: MessageEvent, sender: Group):
     if sender.id in Group_Chats:
         Group_Chats[sender.id].reset()
-        logger.info(sender.id + " conversation reset")
+        logger.debug("conversation reset")
         await app.send_message(sender, MessageChain([Plain("conversation reset")]))
     else:
         Group_Chats[sender.id] = Chatbot(
@@ -75,25 +77,34 @@ async def bot_reset(app: Ariadne, event: MessageEvent, sender: Group):
         )
         logger.debug("Group.id added to dict by reset")
 
-@cmd.command(".temperature {value: float}")
-async def bot_temperature(app: Ariadne, event: MessageEvent, sender: Group, value: float):
-    if sender.id in Group_Chats:
-        Group_Chats[sender.id].temperature = value
-        logger.debug("temperature set")
-        await app.send_message(sender, MessageChain([Plain("temprature set to " +  value)]))    
+
+@cmd.command(".temperature {value: str}")
+async def bot_temperature(app: Ariadne, event: MessageEvent, sender: Group, value: str):
+    try:
+        value_float = float(value)
+        if value_float < 0 or value_float > 1:
+            await app.send_message(sender, MessageChain([Plain("Please check the value 0-1" + value)]))
+            return
+        if sender.id in Group_Chats:
+            Group_Chats[sender.id].temperature = value
+            logger.debug("temperature set")
+            await app.send_message(sender, MessageChain([Plain("temprature set to " + value)]))
+    except Exception as e:
+        await app.send_message(sender, MessageChain([Plain("Please check the value 0-1" + value)]))
+
 
 @cmd.command(".preset {preset: str}")
 async def bot_preset(app: Ariadne, event: MessageEvent, sender: Group, preset: str):
-    preset_prompt : list
+    preset_prompt: list
     preset_prompt = botconfig.get("presets").get(preset)
     logger.debug(preset_prompt)
     if preset_prompt is None:
-        await app.send_message(sender, MessageChain([Plain("preset applied failed: preset does not exit " +  preset)])) 
+        await app.send_message(sender, MessageChain([Plain("preset applied failed: preset does not exit " + preset)]))
         return
     if sender.id in Group_Chats:
         Group_Chats[sender.id].reset()
         Group_Chats[sender.id].conversation["default"] = preset_prompt
-        await app.send_message(sender, MessageChain([Plain("preset applied: " +  preset)])) 
+        await app.send_message(sender, MessageChain([Plain("preset applied: " + preset)]))
     else:
         Group_Chats[sender.id] = Chatbot(
             api_key=botconfig.get("openai").get("openai_api_key"),
@@ -101,8 +112,9 @@ async def bot_preset(app: Ariadne, event: MessageEvent, sender: Group, preset: s
             temperature=botconfig.get("openai").get("temperature")
         )
         Group_Chats[sender.id].conversation["default"] = preset_prompt
-        await app.send_message(sender, MessageChain([Plain("preset applied: " +  preset)])) 
+        await app.send_message(sender, MessageChain([Plain("preset applied: " + preset)]))
         logger.debug("Group.id added to dict by preset")
+
 
 @app.broadcast.receiver("FriendMessage")
 # 私人信息
